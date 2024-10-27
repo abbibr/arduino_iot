@@ -1,0 +1,9 @@
+{
+  "cpu": {
+    "fqbn": "esp32:esp32:lilygo_t_display",
+    "name": "",
+    "type": "serial"
+  },
+  "secrets": [],
+  "included_libs": []
+}

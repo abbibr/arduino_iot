@@ -16,7 +16,13 @@ void setup() {
   lcd.begin(20, 4);  // Initialize the LCD with 20 columns and 4 rows
   lcd.backlight();    // Turn on the backlight
   lcd.setCursor(0, 0);  // Set cursor to first column, first row
-  lcd.print("Hello, World!");  // Print text on the first row
+  lcd.print("Hi everone!");  // Print text on the first row
+  lcd.setCursor(3, 1);  // Set cursor to first column, first row
+  lcd.print("Ibrohim Abbosov - ");  // Print text on the first row
+  lcd.setCursor(0, 2);  // Set cursor to first column, first row
+  lcd.print("CEO of abbibr compan");  // Print text on the first row
+  lcd.setCursor(0, 3);  // Set cursor to first column, first row
+  lcd.print("Team Leader ");  // Print text on the first row
 }
 
 void loop() {

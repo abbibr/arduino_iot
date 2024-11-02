@@ -11,9 +11,9 @@ unsigned long previousMillis = 0;
 const unsigned long interval = 5000; // store data in every 5 seconds
 
 int pumpPin = 12; // Using a compatible ESP32 pin for pump control
-const char* ssid = "killer";
-const char* password = "12345678";
-const char* serverUrl = "https://b677-37-110-210-29.ngrok-free.app/api/store-water-data";
+const char* ssid = "Xiaomi 13 Lite";
+const char* password = "salom12345";
+const char* serverUrl = "https://9769-95-214-210-153.ngrok-free.app/api/store-water-data";
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 

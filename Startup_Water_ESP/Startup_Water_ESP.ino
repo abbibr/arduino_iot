@@ -3,93 +3,112 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-volatile int flowPulseCount = 0;
-float calibrationFactor = 4.5;
-float flowRate = 0;
-float totalLiters = 0;
-unsigned long previousMillis = 0;
-const unsigned long interval = 5000; // store data in every 5 seconds
+volatile int flow_frequency = 0;     // Counts flow sensor pulses
+float l_min = 0;                     // Calculated liters/minute
+float l_hour = 0;                    // Calculated liters/hour
+float totalLiters = 0;               // Total liters spent
+const unsigned char flowsensor = 2;  // Sensor pin
+unsigned long lastMeasureTime = 0;
+unsigned long lastSendTime = 0;
+const int measureInterval = 1000;    // Measurement interval (1 second)
+const int sendInterval = 5000;       // Data send interval (5 seconds)
 
-int pumpPin = 12; // Using a compatible ESP32 pin for pump control
 const char* ssid = "Xiaomi 13 Lite";
 const char* password = "salom12345";
-const char* serverUrl = "https://9769-95-214-210-153.ngrok-free.app/api/store-water-data";
+const char* serverUrl = "https://solutionsquad.uz/api/test/";  // Replace with your actual URL
 
-LiquidCrystal_I2C lcd(0x27, 20, 4);
+LiquidCrystal_I2C lcd(0x27, 20, 4);  // LCD settings
+
+// Interrupt service routine for counting flow sensor pulses
+void IRAM_ATTR flow() { 
+    flow_frequency++;
+}
 
 void setup() {
-  Serial.begin(9600);
-  Wire.begin(21, 22);  // Set ESP32 I2C pins
-  Wire.setClock(100000);
+    pinMode(flowsensor, INPUT_PULLUP);  // Setup the flow sensor pin with an internal pull-up
+    Serial.begin(9600);
+    attachInterrupt(digitalPinToInterrupt(flowsensor), flow, RISING); // Attach interrupt
 
-  pinMode(2, INPUT_PULLUP);
-  pinMode(pumpPin, OUTPUT);
-  attachInterrupt(digitalPinToInterrupt(2), pulseCounter, RISING);
-  digitalWrite(pumpPin, LOW);
-  lcd.init();    
-  lcd.backlight(); 
+    Wire.begin(21, 22);  // Initialize I2C for ESP32 on SDA=21, SCL=22
+    lcd.init();          
+    lcd.backlight();    
 
-  // Connect to Wi-Fi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-  Serial.println("Connected to WiFi");
+    // Display welcome message on the first line permanently
+    lcd.setCursor(0, 0);
+    lcd.print("Welcome to AquaCare");
+
+    // Connect to Wi-Fi
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        Serial.println("Connecting to WiFi...");
+    }
+    Serial.println("Connected to WiFi");
+
+    lastMeasureTime = millis();
+    lastSendTime = millis();
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
+    unsigned long currentTime = millis();
 
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
+    // Measure flow rate and update display every second
+    if (currentTime - lastMeasureTime >= measureInterval) {
+        lastMeasureTime = currentTime; 
+        l_min = (flow_frequency / 7.5);   // Convert pulses to L/min
+        l_hour = l_min * 60;              // Convert L/min to L/h
+        totalLiters += (l_min / 60);      // Total liters spent
 
-    flowRate = ((flowPulseCount / calibrationFactor) / 7.5) * 60;
-    totalLiters += (flowRate / 3600);
+        flow_frequency = 0; // Reset flow frequency count
 
-    // Display on LCD
-    lcd.setCursor(0, 0);
-    lcd.print("Flow Rate: ");
-    lcd.print(flowRate);
-    lcd.print(" L/h  ");
+        // Display on Serial Monitor for debugging
+        Serial.print("Flow rate: ");
+        Serial.print(l_hour, 2); 
+        Serial.print(" L/h, ");
+        Serial.print("Total liters spent: ");
+        Serial.println(totalLiters, 2); 
 
-    lcd.setCursor(0, 1);
-    lcd.print("Total Litres: ");
-    lcd.print(totalLiters);
+        // Update only the necessary lines on the LCD
+        lcd.setCursor(0, 2);
+        lcd.print("Flow Rate: ");
+        lcd.print(l_hour, 2);
+        lcd.print(" L/h   ");  // Extra spaces to clear any previous characters
 
-    // Send data to backend
-    sendToBackend(flowRate, totalLiters);
+        lcd.setCursor(0, 3);
+        lcd.print("Total Liters: ");
+        lcd.print(totalLiters, 2);
+        lcd.print(" L   ");    // Extra spaces to clear any previous characters
+    }
 
-    flowPulseCount = 0; // Reset pulse count
-  }
-}
-
-// Interrupt Service Routine (ISR) for counting flow sensor pulses
-void pulseCounter() {
-  flowPulseCount++;
+    // Every 5 seconds, send data to backend
+    if (currentTime - lastSendTime >= sendInterval) {
+        sendToBackend(l_hour, totalLiters);
+        lastSendTime = currentTime;
+    }
 }
 
 // Function to send data to Laravel backend
 void sendToBackend(float flowRate, float totalLiters) {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(serverUrl);
-    http.addHeader("Content-Type", "application/json");
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(serverUrl);
+        http.addHeader("Content-Type", "application/json");
 
-    String jsonData = "{\"flowRate\":" + String(flowRate) + ",\"totalLiters\":" + String(totalLiters) + "}";
-    int httpResponseCode = http.POST(jsonData);
+        // Construct JSON payload
+        String jsonData = "{\"flowRate\":" + String(flowRate, 2) + ",\"totalLiters\":" + String(totalLiters, 2) + "}";
+        int httpResponseCode = http.POST(jsonData);
 
-    if (httpResponseCode > 0) {
-      String response = http.getString();
-      Serial.println("Data sent successfully");
-      Serial.println(response);
+        if (httpResponseCode > 0) {
+            String response = http.getString();
+            Serial.println("Data sent successfully");
+            Serial.println("Response: " + response);
+        } else {
+            Serial.print("Error sending data: ");
+            Serial.println(httpResponseCode);
+        }
+
+        http.end();
     } else {
-      Serial.print("Error sending data: ");
-      Serial.println(httpResponseCode);
+        Serial.println("WiFi Disconnected");
     }
-
-    http.end();
-  } else {
-    Serial.println("WiFi Disconnected");
-  }
 }

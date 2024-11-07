@@ -1,13 +1,13 @@
 /* 
   VCC -> 5v
-  Trig -> Trigger Pin (input)
-  Echo -> Echo pin (output)
+  Trig -> Trigger Pin (output)
+  Echo -> Echo pin (input)
   GND -> GND (ground)
 */
 
 
-#define triggerPin 10
-#define echoPin 13
+#define triggerPin 8
+#define echoPin 9
 int buzzer = 7;
 
 float duration, distance;

@@ -15,7 +15,7 @@ const int sendInterval = 5000;       // Data send interval (5 seconds)
 
 const char* ssid = "Xiaomi 13 Lite";
 const char* password = "salom12345";
-const char* serverUrl = "https://solutionsquad.uz/api/test/";  // Replace with your actual URL
+const char* serverUrl = "https://768b-195-158-4-4.ngrok-free.app/api/store-water-data";  // Replace with your actual URL
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);  // LCD settings
 

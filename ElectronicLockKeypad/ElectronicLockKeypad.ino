@@ -90,7 +90,7 @@ void loop() {
       digitalWrite(buzzer, LOW);
     }
 
-    // Clear data and LCD display
+    // Clear data and LCD displaym 
     lcd.clear();
     clearData();
   }
